@@ -1,0 +1,2213 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MapaTuc.pages.dev
+  </title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <!-- Bibliotecas para mapa 3D -->
+  <script src="https://unpkg.com/three@0.158.0/build/three.min.js"></script>
+  <script src="https://unpkg.com/leaflet-gl@0.0.4/dist/leaflet-gl.js"></script>
+  <script src="https://unpkg.com/leaflet-gl@0.0.4/dist/leaflet-gl.css"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f5f5f5;
+      color: #333;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 1rem 2rem;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .header h1 {
+      margin-bottom: 0.5rem;
+    }
+
+    .header p {
+      opacity: 0.9;
+    }
+
+    .nav-tabs {
+      background: white;
+      padding: 0 2rem;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      display: flex;
+      gap: 0;
+    }
+
+    .tab-button {
+      background: none;
+      border: none;
+      padding: 1rem 2rem;
+      cursor: pointer;
+      font-size: 1rem;
+      color: #666;
+      border-bottom: 3px solid transparent;
+      transition: all 0.3s;
+    }
+
+    .tab-button:hover {
+      background-color: #f0f0f0;
+      color: #333;
+    }
+
+    .tab-button.active {
+      color: #667eea;
+      border-bottom-color: #667eea;
+      background-color: #f8f9ff;
+    }
+
+    .tab-content {
+      display: none;
+      min-height: calc(100vh - 200px);
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    /* Estilos del Mapa */
+    #map {
+      height: 600px;
+      width: 100%;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    #fireMap {
+      height: 600px;
+      width: 100%;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      background-color: #f8f9fa;
+    }
+
+    #map3d {
+      height: 600px;
+      width: 100%;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      background-color: #f8f9fa;
+    }
+
+    .map3d-controls {
+      background: white;
+      padding: 1rem;
+      border-radius: 10px;
+      margin-bottom: 1rem;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .map3d-controls select,
+    .map3d-controls input,
+    .map3d-controls button {
+      margin-right: 1rem;
+      padding: 0.5rem;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+
+    .map3d-controls button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      cursor: pointer;
+      padding: 0.5rem 1rem;
+    }
+
+    .map3d-controls button:hover {
+      transform: translateY(-1px);
+    }
+
+    .elevation-slider {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .elevation-slider input[type="range"] {
+      width: 150px;
+    }
+
+    .elevation-value {
+      font-weight: bold;
+      color: #667eea;
+      min-width: 50px;
+    }
+
+    /* Estilos para marcadores 3D */
+    .parcel-3d-marker {
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .parcel-3d-marker:hover {
+      transform: translateY(-5px) !important;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.4) !important;
+    }
+
+    .parcel-3d-marker::before {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(0,0,0,0.3), transparent);
+      border-radius: 50%;
+    }
+
+    .map-controls {
+      background: white;
+      padding: 1rem;
+      border-radius: 10px;
+      margin-bottom: 1rem;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .map-controls select,
+    .map-controls input,
+    .map-controls button {
+      margin-right: 1rem;
+      padding: 0.5rem;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+
+    .map-controls button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      cursor: pointer;
+      padding: 0.5rem 1rem;
+    }
+
+    .map-controls button:hover {
+      transform: translateY(-1px);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: white;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    table, th, td {
+      border: 1px solid #e0e0e0;
+    }
+
+    th, td {
+      padding: 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      font-weight: bold;
+    }
+
+    #infoTable tbody tr:nth-child(even) {
+      background-color: #f8f9fa;
+    }
+
+    #infoTable tbody tr:hover {
+      background-color: #e3f2fd !important;
+      transform: scale(1.01);
+      transition: all 0.2s ease;
+    }
+
+    /* Estilos del Dashboard */
+    .dashboard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+    }
+
+    .btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: transform 0.2s;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .btn-secondary {
+      background: #6c757d;
+    }
+
+    .btn-danger {
+      background: #dc3545;
+    }
+
+    .btn-success {
+      background: #28a745;
+    }
+
+    .search-bar {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .search-bar input {
+      flex: 1;
+      padding: 0.75rem;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      font-size: 1rem;
+    }
+
+    .search-bar button {
+      padding: 0.75rem 1.5rem;
+    }
+
+    .properties-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .property-card {
+      background: white;
+      border-radius: 10px;
+      padding: 1.5rem;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+
+    .property-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+
+    .property-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .property-id {
+      font-weight: bold;
+      color: #667eea;
+      font-size: 1.1rem;
+    }
+
+    .property-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .btn-small {
+      padding: 0.4rem 0.8rem;
+      font-size: 0.9rem;
+    }
+
+    .property-info {
+      margin-bottom: 1rem;
+    }
+
+    .property-info p {
+      margin-bottom: 0.5rem;
+      color: #666;
+    }
+
+    .property-info strong {
+      color: #333;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+
+    .stat-number {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #667eea;
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+      color: #666;
+      font-size: 0.9rem;
+    }
+
+    .no-properties {
+      text-align: center;
+      padding: 3rem;
+      color: #666;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .no-properties h3 {
+      margin-bottom: 1rem;
+      color: #333;
+    }
+
+    /* Modales */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 9999;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0, 0, 0, 0.5);
+      padding: 2rem;
+    }
+
+    .modal-content {
+      background-color: white;
+      margin: 0 auto;
+      padding: 2rem;
+      border-radius: 10px;
+      width: 100%;
+      max-width: 800px;
+      max-height: 85vh;
+      overflow-y: auto;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+
+    #modalContent {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+    }
+
+    #modalContent pre {
+      background: #f8f9fa !important;
+      padding: 15px !important;
+      border-radius: 8px !important;
+      border-left: 4px solid #667eea !important;
+      margin: 15px 0 !important;
+      font-family: 'Courier New', monospace !important;
+      white-space: pre-wrap !important;
+      word-wrap: break-word !important;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+      overflow-x: auto !important;
+    }
+
+    #modalContent span[style*="background: linear-gradient"] {
+      display: block !important;
+      margin: 20px 0 10px 0 !important;
+      text-align: center !important;
+      font-size: 1.1em !important;
+      letter-spacing: 0.5px !important;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid #eee;
+    }
+
+    .close {
+      font-size: 2rem;
+      cursor: pointer;
+      color: #aaa;
+    }
+
+    .close:hover {
+      color: #000;
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: bold;
+      color: #333;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      font-size: 1rem;
+    }
+
+    .form-group textarea {
+      height: 100px;
+      resize: vertical;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: flex-end;
+      margin-top: 2rem;
+    }
+
+    .highlight {
+      background-color: yellow;
+    }
+
+    /* Estilos para el mapa de incendios */
+    .fire-controls {
+      display: flex;
+      gap: 1rem;
+    }
+
+    .fire-info {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .fire-marker {
+      border-radius: 50%;
+      border: 2px solid white;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.2); opacity: 0.7; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .fire-popup {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      min-width: 200px;
+    }
+
+    .fire-popup h4 {
+      margin: 0 0 10px 0;
+      color: #333;
+      font-size: 1.1em;
+    }
+
+    .fire-popup p {
+      margin: 5px 0;
+      font-size: 0.9em;
+      color: #666;
+    }
+
+    .confidence-high {
+      background: #ff4444;
+    }
+
+    .confidence-medium {
+      background: #ff8800;
+    }
+
+    .confidence-low {
+      background: #ffaa00;
+    }
+
+    @media (max-width: 768px) {
+      .properties-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .search-bar {
+        flex-direction: column;
+      }
+      
+      .dashboard-header {
+        flex-direction: column;
+        gap: 1rem;
+      }
+
+      .nav-tabs {
+        flex-direction: column;
+      }
+
+      .tab-button {
+        text-align: left;
+      }
+
+      .fire-controls {
+        flex-direction: column;
+      }
+
+      .fire-info {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h5>🏠 MapaTuc.pages.dev</h5>🗺️ Mapa interactivo y 📊 dashboard para la ayuda de la gestión inmobiliaria en Tucumán
+  </div>
+  <div class="nav-tabs">
+    <button class="tab-button active" onclick="showTab('map')">🗺️ Mapa Interactivo</button>
+    <button class="tab-button" onclick="showTab('dashboard')">📊 Dashboard</button>
+    <button class="tab-button" onclick="showTab('fireMap')">🔥 Mapa de Incendios</button>
+    <button class="tab-button" onclick="showTab('map3d')">🏗️ Mapa 3D de Parcelas</button>
+  </div>
+
+  <!-- Pestaña del Mapa -->
+  <div id="map-tab" class="tab-content active">
+    <div class="container">
+      <div class="map-controls">
+        <select id="layerSelect">
+          <option value="none">🔍 Seleccione una capa</option>
+          <option value="dgct:propiedades">🏠 Propiedades</option>
+          <option value="dgct:zonas">🗺️ Zonas</option>
+          <option value="dgct:parcelas" selected>📋 Parcelas</option>
+        </select>
+        <input type="text" id="searchInput" placeholder="🔍N° PADRON" />
+        <button id="searchButton">🔍 Buscar</button>
+      </div>
+      <div id="map"></div>
+      <h5>📋 Información de la Propiedad</h5>
+      <div id="infoTable"></div>
+            
+    </div>
+  </div>
+
+  <!-- Pestaña del Dashboard -->
+  <div id="dashboard-tab" class="tab-content">
+    <div class="container">
+      <div class="dashboard-header">
+        <h2>🏠 Gestión de Propiedades</h2>
+        <button class="btn" onclick="showAddModal()">➕ Agregar Propiedad</button>
+      </div>
+
+      <div class="stats">
+        <div class="stat-card">
+          <div class="stat-number" id="totalProperties">0</div>
+          <div class="stat-label">🏠 Total Propiedades</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="urbanProperties">0</div>
+          <div class="stat-label">🏙️ Urbanas</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="ruralProperties">0</div>
+          <div class="stat-label">🌾 Rurales</div>
+        </div>
+      </div>
+
+      <div class="search-bar">
+        <input type="text" id="dashboardSearchInput" placeholder="🔍 Buscar por padrón, dirección o propietario...">
+        <button class="btn" onclick="searchProperties()">🔍 Buscar</button>
+        <button class="btn btn-secondary" onclick="clearSearch()">🗑️ Limpiar</button>
+      </div>
+
+      <div class="properties-grid" id="propertiesGrid">
+        <!-- Las propiedades se cargarán aquí dinámicamente -->
+      </div>
+
+      <div class="no-properties" id="noProperties" style="display: none;">
+        <h3>📭 No hay propiedades registradas</h3>
+        <p>🚀 Comienza agregando tu primera propiedad</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pestaña del Mapa de Incendios -->
+  <div id="fireMap-tab" class="tab-content">
+    <div class="container">
+      <div class="dashboard-header">
+        <h2>🔥 Mapa de Incendios en Tiempo Real</h2>
+        <div class="fire-controls">
+          <button class="btn" onclick="toggleFireLayer()" id="toggleFireBtn">🔥 Mostrar Incendios</button>
+          <button class="btn btn-secondary" onclick="clearFireMarkers()">🗑️ Limpiar Marcadores</button>
+        </div>
+      </div>
+
+      <div class="fire-info">
+        <div class="stat-card">
+          <div class="stat-number" id="totalFires">0</div>
+          <div class="stat-label">🔥 Incendios Activos</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="highConfidenceFires">0</div>
+          <div class="stat-label">🔴 Alta Confianza</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="mediumConfidenceFires">0</div>
+          <div class="stat-label">🟡 Confianza Media</div>
+        </div>
+      </div>
+
+      <div class="map-controls">
+        <select id="fireLayerSelect">
+          <option value="osm" selected>🗺️ OpenStreetMap (Por Defecto)</option>
+          <option value="satellite">🛰️ Satélite</option>
+          <option value="terrain">🏔️ Relieve</option>
+          <option value="none">🔍 Sin Capa Base</option>
+        </select>
+        <input type="text" id="fireSearchInput" placeholder="🔍 Buscar por ubicación..." />
+        <button id="fireSearchButton">🔍 Buscar</button>
+        <button class="btn btn-secondary" onclick="centerOnTucuman()">📍 Centrar en Tucumán</button>
+      </div>
+      <div id="fireMap"></div>
+      
+      <div class="fire-legend" style="margin-top: 20px; padding: 15px; background: white; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+        <h3 style="color: #667eea; margin-bottom: 15px;">📊 Leyenda de Incendios</h3>
+        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 20px; height: 20px; background: #ff4444; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.3);"></div>
+            <span>🔴 Alta Confianza (>80%)</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 20px; height: 20px; background: #ff8800; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.3);"></div>
+            <span>🟡 Confianza Media (30-80%)</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 20px; height: 20px; background: #ffaa00; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.3);"></div>
+            <span>🟠 Baja Confianza (<30%)</span>
+          </div>
+        </div>
+        <p style="margin-top: 15px; color: #666; font-size: 0.9em;">
+          💡 <strong>Fuente:</strong> NASA FIRMS (Fire Information for Resource Management System)
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pestaña del Mapa 3D de Parcelas -->
+  <div id="map3d-tab" class="tab-content">
+    <div class="container">
+      <div class="dashboard-header">
+        <h2>🏗️ Mapa 3D de Parcelas</h2>
+        <div class="fire-controls">
+          <button class="btn" onclick="toggle3DView()" id="toggle3DBtn">🎮 Activar Vista 3D</button>
+          <button class="btn btn-secondary" onclick="reset3DView()">🔄 Resetear Vista</button>
+        </div>
+      </div>
+
+      <div class="fire-info">
+        <div class="stat-card">
+          <div class="stat-number" id="total3DParcels">0</div>
+          <div class="stat-label">🏗️ Parcelas 3D</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="avgHeight">0m</div>
+          <div class="stat-label">📏 Altura Promedio</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="maxHeight">0m</div>
+          <div class="stat-label">📐 Altura Máxima</div>
+        </div>
+      </div>
+
+      <div class="map3d-controls">
+        <select id="map3dLayerSelect">
+          <option value="osm" selected>🗺️ OpenStreetMap</option>
+          <option value="satellite">🛰️ Satélite</option>
+          <option value="terrain">🏔️ Relieve</option>
+          <option value="none">🔍 Sin Capa Base</option>
+        </select>
+        
+        <div class="elevation-slider">
+          <label for="elevationMultiplier">📏 Factor de Elevación:</label>
+          <input type="range" id="elevationMultiplier" min="0.1" max="5" step="0.1" value="1">
+          <span class="elevation-value" id="elevationValue">1.0x</span>
+        </div>
+
+        <div class="elevation-slider">
+          <label for="opacity3D">👁️ Opacidad:</label>
+          <input type="range" id="opacity3D" min="0.1" max="1" step="0.1" value="0.8">
+          <span class="elevation-value" id="opacityValue">80%</span>
+        </div>
+
+        <button class="btn" onclick="load3DParcels()">🏗️ Cargar Parcelas 3D</button>
+        <button class="btn btn-secondary" onclick="centerOnTucuman3D()">📍 Centrar en Tucumán</button>
+      </div>
+      
+      <div id="map3d"></div>
+      
+      <div class="fire-legend" style="margin-top: 20px; padding: 15px; background: white; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+        <h3 style="color: #667eea; margin-bottom: 15px;">📊 Leyenda 3D de Parcelas</h3>
+        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 20px; height: 20px; background: #28a745; border-radius: 3px; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.3);"></div>
+            <span>🟢 Parcelas Urbanas</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 20px; height: 20px; background: #ffc107; border-radius: 3px; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.3);"></div>
+            <span>🟡 Parcelas Rurales</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 20px; height: 20px; background: #dc3545; border-radius: 3px; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.3);"></div>
+            <span>🔴 Parcelas Comerciales</span>
+          </div>
+        </div>
+        <p style="margin-top: 15px; color: #666; font-size: 0.9em;">
+          💡 <strong>Altura:</strong> Basada en la superficie de la parcela (factor de elevación aplicable)
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal para detalles de propiedad (Mapa) -->
+  <div id="myModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>📋 Detalles de la Propiedad</h2>
+      <div id="modalContent"></div>
+      <div class="modal-actions" style="margin-top: 20px; text-align: center; padding-top: 20px; border-top: 1px solid #eee;">
+        <button class="btn btn-success" onclick="addPropertyFromModal()" id="addPropertyBtn" style="display: none;">
+          ➕ Agregar al Dashboard
+        </button>
+        <button class="btn btn-secondary" onclick="closeMapModal()">
+          ❌ Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal para agregar/editar propiedades (Dashboard) -->
+  <div id="propertyModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modalTitle">🏠 Nueva Propiedad</h3>
+        <span class="close" onclick="closeModal()">&times;</span>
+      </div>
+      <form id="propertyForm">
+        <div class="form-group">
+          <label for="padronProvincial">🏛️ Padrón Provincial:</label>
+          <input type="text" id="padronProvincial" name="padronProvincial" required>
+        </div>
+        <div class="form-group">
+          <label for="padronMunicipal">🏢 Padrón Municipal:</label>
+          <input type="text" id="padronMunicipal" name="padronMunicipal" required>
+        </div>
+        <div class="form-group">
+          <label for="nomenclatura">📝 Nomenclatura:</label>
+          <input type="text" id="nomenclatura" name="nomenclatura">
+        </div>
+        <div class="form-group">
+          <label for="categoria">🏷️ Categoría:</label>
+          <select id="categoria" name="categoria" required>
+            <option value="">🔍 Seleccionar categoría</option>
+            <option value="URBANO C.S.M.P.">🏙️ URBANO C.S.M.P.</option>
+            <option value="RURAL">🌾 RURAL</option>
+            <option value="URBANO">🏙️ URBANO</option>
+            <option value="RURAL C.S.M.P.">🌾 RURAL C.S.M.P.</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="matOrd">📋 Mat/Ord:</label>
+          <input type="text" id="matOrd" name="matOrd">
+        </div>
+        <div class="form-group">
+          <label for="alta">📅 Fecha de Alta:</label>
+          <input type="date" id="alta" name="alta">
+        </div>
+        <div class="form-group">
+          <label for="caracter">⚖️ Caracter:</label>
+          <input type="text" id="caracter" name="caracter">
+        </div>
+        <div class="form-group">
+          <label for="domicilio">🏠 Domicilio:</label>
+          <textarea id="domicilio" name="domicilio" rows="3"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="responsableFiscal">👤 Responsable Fiscal:</label>
+          <input type="text" id="responsableFiscal" name="responsableFiscal">
+        </div>
+        <div class="form-group">
+          <label for="domicilioFiscal">🏠 Domicilio Fiscal:</label>
+          <textarea id="domicilioFiscal" name="domicilioFiscal" rows="3"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="inscripcionDominial">📜 Inscripción Dominial:</label>
+          <input type="text" id="inscripcionDominial" name="inscripcionDominial">
+        </div>
+        <div class="form-group">
+          <label for="propietarioLegal">👑 Propietario Legal:</label>
+          <input type="text" id="propietarioLegal" name="propietarioLegal">
+        </div>
+        <div class="form-group">
+          <label for="planoNro">📐 Plano Nro:</label>
+          <input type="text" id="planoNro" name="planoNro">
+        </div>
+        <div class="form-group">
+          <label for="planoAno">📅 Plano Año:</label>
+          <input type="text" id="planoAno" name="planoAno">
+        </div>
+        <div class="form-group">
+          <label for="superficie">📏 Superficie (Mts²):</label>
+          <input type="number" id="superficie" name="superficie" step="0.01">
+        </div>
+        <div class="form-group">
+          <label for="lindaCon">🔗 Linda con:</label>
+          <textarea id="lindaCon" name="lindaCon" rows="3"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="latitud">🌍 Latitud:</label>
+          <input type="number" id="latitud" name="latitud" step="0.000001">
+        </div>
+        <div class="form-group">
+          <label for="longitud">🌍 Longitud:</label>
+          <input type="number" id="longitud" name="longitud" step="0.000001">
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" onclick="closeModal()">❌ Cancelar</button>
+          <button type="submit" class="btn btn-success" id="saveButton">💾 Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Variables globales
+    let map;
+    let wmsLayer;
+    let fireMap;
+    let fireMarkers = [];
+    let fireLayerVisible = false;
+    let map3d;
+    let map3dMarkers = [];
+    let map3dLayerVisible = false;
+    let elevationMultiplier = 1.0;
+    let opacity3D = 0.8;
+    let properties = JSON.parse(localStorage.getItem('properties')) || [];
+    let currentEditingId = null;
+    let currentModalPropertyData = null;
+
+    // Datos de ejemplo si no hay propiedades
+    if (properties.length === 0) {
+      properties = [
+        {
+          id: 1,
+          padronProvincial: "32142",
+          padronMunicipal: "169199",
+          nomenclatura: "17-117-1-13--79A--16-",
+          categoria: "URBANO C.S.M.P.",
+          matOrd: "9268/1146",
+          alta: "1901-01-01",
+          caracter: "No Constituida",
+          domicilio: "LIBERTAD 855 Piso: Dpto: Block: Mz: Casa/Lote: - Bº CIUDADELA",
+          responsableFiscal: "GOMEZ, LUISA ARGENTINA DE VELLA",
+          domicilioFiscal: "LIBERTAD 855 Piso: Dpto: Block: Mz: Casa/Lote: - SAN MIGUEL DE TUCUMAN",
+          inscripcionDominial: "S-2107",
+          propietarioLegal: "GOMEZ, LUISA ARGENTINA DE VELLA (100,00%)",
+          planoNro: "53140",
+          planoAno: "2008 (PDF)",
+          superficie: 277.2118,
+          lindaCon: "Al Sur con PH 7233 - FABIANA GORDILLO - PH 3764; Al Oeste con ABEL DIOGENES GONZALEZ; Al Norte con FRANCISCO ATILIO RUIZ; Al Este con CALLE LIBERTAD",
+          latitud: -26.8083,
+          longitud: -65.2176
+        }
+      ];
+      saveProperties();
+    }
+
+    // Funciones de navegación por pestañas
+    function showTab(tabName) {
+      // Ocultar todas las pestañas
+      document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      
+      // Remover clase active de todos los botones
+      document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      
+      // Mostrar la pestaña seleccionada
+      document.getElementById(tabName + '-tab').classList.add('active');
+      
+      // Activar el botón correspondiente
+      event.target.classList.add('active');
+      
+      // Si es la pestaña del mapa y el mapa existe, invalidar el tamaño
+      if (tabName === 'map' && map) {
+        setTimeout(() => {
+          map.invalidateSize();
+        }, 100);
+      }
+      
+      // Si es la pestaña del mapa de incendios, inicializar o invalidar
+      if (tabName === 'fireMap') {
+        setTimeout(() => {
+          if (!fireMap) {
+            console.log('Inicializando mapa de incendios...');
+            initializeFireMap();
+          } else {
+            console.log('Invalidando tamaño del mapa de incendios...');
+            fireMap.invalidateSize();
+          }
+        }, 200);
+      }
+      
+      // Si es la pestaña del mapa 3D, inicializar o invalidar
+      if (tabName === 'map3d') {
+        setTimeout(() => {
+          if (!map3d) {
+            console.log('Inicializando mapa 3D...');
+            initializeMap3D();
+          } else {
+            console.log('Invalidando tamaño del mapa 3D...');
+            map3d.invalidateSize();
+          }
+        }, 200);
+      }
+    }
+
+    // Funciones del Dashboard
+    function saveProperties() {
+      localStorage.setItem('properties', JSON.stringify(properties));
+      updateStats();
+    }
+
+    function updateStats() {
+      const total = properties.length;
+      const urban = properties.filter(p => p.categoria && p.categoria.includes('URBANO')).length;
+      const rural = properties.filter(p => p.categoria && p.categoria.includes('RURAL')).length;
+
+      document.getElementById('totalProperties').textContent = total;
+      document.getElementById('urbanProperties').textContent = urban;
+      document.getElementById('ruralProperties').textContent = rural;
+    }
+
+    function renderProperties(filteredProperties = null) {
+      const propertiesToRender = filteredProperties || properties;
+      const grid = document.getElementById('propertiesGrid');
+      const noProperties = document.getElementById('noProperties');
+
+      if (propertiesToRender.length === 0) {
+        grid.innerHTML = '';
+        noProperties.style.display = 'block';
+        return;
+      }
+
+      noProperties.style.display = 'none';
+      grid.innerHTML = propertiesToRender.map(property => `
+        <div class="property-card">
+          <div class="property-header">
+            <div class="property-id">Padrón: ${property.padronProvincial}</div>
+            <div class="property-actions">
+              <button class="btn btn-small" onclick="editProperty(${property.id})">✏️ Editar</button>
+              <button class="btn btn-small btn-danger" onclick="deleteProperty(${property.id})">🗑️ Eliminar</button>
+            </div>
+          </div>
+          <div class="property-info">
+            <p><strong>🏢 Municipal:</strong> ${property.padronMunicipal || 'N/A'}</p>
+            <p><strong>🏷️ Categoría:</strong> ${property.categoria || 'N/A'}</p>
+            <p><strong>🏠 Domicilio:</strong> ${property.domicilio || 'N/A'}</p>
+            <p><strong>👑 Propietario:</strong> ${property.propietarioLegal || 'N/A'}</p>
+            <p><strong>📏 Superficie:</strong> ${property.superficie ? property.superficie + ' m²' : 'N/A'}</p>
+            ${property.latitud && property.longitud ? 
+              `<p><strong>🗺️ Ubicación:</strong> <a href="#" onclick="showMapWithProperty(${property.latitud}, ${property.longitud})">📍 Ver en mapa</a></p>` : 
+              ''
+            }
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function showMapWithProperty(lat, lng) {
+      // Cambiar a la pestaña del mapa
+      showTab('map');
+      
+      // Centrar el mapa en la propiedad
+      if (map) {
+        map.setView([lat, lng], 15);
+        L.marker([lat, lng]).addTo(map)
+          .bindPopup('🏠 Propiedad seleccionada')
+          .openPopup();
+      }
+    }
+
+    function showAddModal() {
+      currentEditingId = null;
+      document.getElementById('modalTitle').textContent = '🏠 Nueva Propiedad';
+      document.getElementById('propertyForm').reset();
+      document.getElementById('propertyModal').style.display = 'block';
+    }
+
+    function editProperty(id) {
+      const property = properties.find(p => p.id === id);
+      if (!property) return;
+
+      currentEditingId = id;
+      document.getElementById('modalTitle').textContent = '✏️ Editar Propiedad';
+      
+      // Llenar el formulario con los datos de la propiedad
+      Object.keys(property).forEach(key => {
+        const input = document.getElementById(key);
+        if (input) {
+          input.value = property[key] || '';
+        }
+      });
+
+      document.getElementById('propertyModal').style.display = 'block';
+    }
+
+    function deleteProperty(id) {
+      if (confirm('🗑️ ¿Estás seguro de que quieres eliminar esta propiedad?')) {
+        properties = properties.filter(p => p.id !== id);
+        saveProperties();
+        renderProperties();
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('propertyModal').style.display = 'none';
+      currentEditingId = null;
+    }
+
+    function searchProperties() {
+      const searchTerm = document.getElementById('dashboardSearchInput').value.toLowerCase();
+      const filtered = properties.filter(property => 
+        (property.padronProvincial && property.padronProvincial.toLowerCase().includes(searchTerm)) ||
+        (property.padronMunicipal && property.padronMunicipal.toLowerCase().includes(searchTerm)) ||
+        (property.domicilio && property.domicilio.toLowerCase().includes(searchTerm)) ||
+        (property.propietarioLegal && property.propietarioLegal.toLowerCase().includes(searchTerm)) ||
+        (property.responsableFiscal && property.responsableFiscal.toLowerCase().includes(searchTerm))
+      );
+      renderProperties(filtered);
+    }
+
+    function clearSearch() {
+      document.getElementById('dashboardSearchInput').value = '';
+      renderProperties();
+    }
+
+    function addPropertyFromModal() {
+      if (!currentModalPropertyData || !currentModalPropertyData.padronProvincial) {
+        alert('❌ No hay datos válidos para agregar');
+        return;
+      }
+
+      // Verificar si ya existe una propiedad con el mismo padrón provincial
+      const existingProperty = properties.find(p => p.padronProvincial === currentModalPropertyData.padronProvincial);
+      if (existingProperty) {
+        if (confirm('⚠️ Ya existe una propiedad con este Padrón Provincial. ¿Deseas actualizarla con los nuevos datos?')) {
+          // Actualizar propiedad existente
+          const index = properties.findIndex(p => p.padronProvincial === currentModalPropertyData.padronProvincial);
+          properties[index] = { ...properties[index], ...currentModalPropertyData };
+          saveProperties();
+          renderProperties();
+          alert('✅ Propiedad actualizada exitosamente');
+        }
+      } else {
+        // Agregar nueva propiedad
+        currentModalPropertyData.id = Date.now();
+        properties.push(currentModalPropertyData);
+        saveProperties();
+        renderProperties();
+        alert('✅ Propiedad agregada exitosamente al dashboard');
+      }
+      
+      closeMapModal();
+    }
+
+    function closeMapModal() {
+      document.getElementById('myModal').style.display = 'none';
+      document.getElementById('addPropertyBtn').style.display = 'none';
+      currentModalPropertyData = null;
+    }
+
+    // Funciones del Mapa de Incendios
+    function initializeFireMap() {
+      // Verificar que el contenedor existe
+      if (!document.getElementById('fireMap')) {
+        console.error('Contenedor fireMap no encontrado');
+        return;
+      }
+
+      // Limpiar mapa existente si hay uno
+      if (fireMap) {
+        fireMap.remove();
+      }
+
+      // Obtener coordenadas de la URL si existen
+      const urlParams = new URLSearchParams(window.location.search);
+      const lat = urlParams.get('lat');
+      const lng = urlParams.get('lng');
+      
+      // Crear el mapa
+      fireMap = L.map('fireMap', {
+        center: [lat ? parseFloat(lat) : -26.8083, lng ? parseFloat(lng) : -65.2176],
+        zoom: 8,
+        zoomControl: true
+      });
+
+      // Capa base por defecto - OpenStreetMap
+      const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap'
+      });
+      
+      osmLayer.addTo(fireMap);
+
+      // Activar incendios automáticamente al inicializar
+      fireLayerVisible = true;
+      document.getElementById('toggleFireBtn').textContent = '🔥 Ocultar Incendios';
+      document.getElementById('toggleFireBtn').classList.remove('btn');
+      document.getElementById('toggleFireBtn').classList.add('btn-danger');
+
+      console.log('Mapa de incendios inicializado correctamente');
+
+      // Event listeners del mapa de incendios
+      document.getElementById('fireLayerSelect').addEventListener('change', function(event) {
+        const selectedLayer = event.target.value;
+        fireMap.eachLayer(layer => {
+          if (layer instanceof L.TileLayer) {
+            fireMap.removeLayer(layer);
+          }
+        });
+        
+        switch(selectedLayer) {
+          case 'osm':
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+              maxZoom: 19,
+              attribution: '© OpenStreetMap'
+            }).addTo(fireMap);
+            break;
+          case 'satellite':
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+              maxZoom: 19,
+              attribution: '© Esri'
+            }).addTo(fireMap);
+            break;
+          case 'terrain':
+            L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+              maxZoom: 17,
+              attribution: '© OpenTopoMap'
+            }).addTo(fireMap);
+            break;
+          case 'none':
+            // No agregar capa base
+            break;
+        }
+      });
+
+      document.getElementById('fireSearchButton').addEventListener('click', function() {
+        const searchTerm = document.getElementById('fireSearchInput').value;
+        if (searchTerm) {
+          // Usar Nominatim para geocodificación
+          fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchTerm)}&limit=1`)
+            .then(response => response.json())
+            .then(data => {
+              if (data.length > 0) {
+                const lat = parseFloat(data[0].lat);
+                const lon = parseFloat(data[0].lon);
+                fireMap.setView([lat, lon], 12);
+              } else {
+                alert('❌ Ubicación no encontrada');
+              }
+            })
+            .catch(error => console.error('Error en búsqueda:', error));
+        }
+      });
+
+      // Agregar interactividad al mapa de incendios
+      fireMap.on('click', function(e) {
+        const lat = e.latlng.lat;
+        const lng = e.latlng.lng;
+        
+        // Crear popup informativo en el punto clickeado
+        L.popup()
+          .setLatLng([lat, lng])
+          .setContent(`
+            <div style="text-align: center; padding: 10px;">
+              <h4 style="margin: 0 0 10px 0; color: #667eea;">📍 Ubicación Clicked</h4>
+              <p style="margin: 5px 0;"><strong>Latitud:</strong> ${lat.toFixed(6)}</p>
+              <p style="margin: 5px 0;"><strong>Longitud:</strong> ${lng.toFixed(6)}</p>
+              <button onclick="addFireAtLocation(${lat}, ${lng})" style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; margin-top: 10px;">
+                🔥 Agregar Incendio
+              </button>
+            </div>
+          `)
+          .openOn(fireMap);
+      });
+
+      // Cargar incendios automáticamente al inicializar
+      loadFireData();
+    }
+
+    function loadFireData() {
+      console.log('Cargando datos de incendios...');
+      
+      // Simular datos de incendios para Argentina (coordenadas aproximadas)
+      const fireData = [
+        { lat: -26.8, lng: -65.2, confidence: 85, date: '2024-01-15', area: 'Tucumán' },
+        { lat: -27.5, lng: -65.8, confidence: 72, date: '2024-01-14', area: 'Santiago del Estero' },
+        { lat: -26.2, lng: -64.8, confidence: 45, date: '2024-01-13', area: 'Salta' },
+        { lat: -27.0, lng: -66.0, confidence: 90, date: '2024-01-12', area: 'Catamarca' },
+        { lat: -26.5, lng: -65.5, confidence: 60, date: '2024-01-11', area: 'Tucumán' },
+        { lat: -27.2, lng: -65.6, confidence: 78, date: '2024-01-10', area: 'Santiago del Estero' },
+        { lat: -26.9, lng: -64.9, confidence: 55, date: '2024-01-09', area: 'Salta' },
+        { lat: -27.1, lng: -65.9, confidence: 82, date: '2024-01-08', area: 'Catamarca' },
+        { lat: -26.7, lng: -65.4, confidence: 75, date: '2024-01-16', area: 'Tucumán' },
+        { lat: -27.3, lng: -65.7, confidence: 65, date: '2024-01-16', area: 'Santiago del Estero' }
+      ];
+
+      // Verificar que el mapa está inicializado y visible
+      if (fireMap && fireLayerVisible) {
+        console.log('Agregando marcadores de incendios...');
+        addFireMarkers(fireData);
+      } else {
+        console.log('Mapa no inicializado o capa no visible:', { fireMap: !!fireMap, fireLayerVisible });
+      }
+    }
+
+    function addFireMarkers(fireData) {
+      console.log('Agregando marcadores de incendios:', fireData.length);
+      
+      // Verificar que el mapa está inicializado
+      if (!fireMap) {
+        console.error('Mapa de incendios no inicializado');
+        return;
+      }
+
+      // Limpiar marcadores existentes
+      clearFireMarkers();
+      
+      let highConfidence = 0;
+      let mediumConfidence = 0;
+      let lowConfidence = 0;
+
+      fireData.forEach(fire => {
+        let color = '#ffaa00'; // Baja confianza por defecto
+        let confidenceClass = 'confidence-low';
+        
+        if (fire.confidence >= 80) {
+          color = '#ff4444';
+          confidenceClass = 'confidence-high';
+          highConfidence++;
+        } else if (fire.confidence >= 30) {
+          color = '#ff8800';
+          confidenceClass = 'confidence-medium';
+          mediumConfidence++;
+        } else {
+          lowConfidence++;
+        }
+
+        const marker = L.circleMarker([fire.lat, fire.lng], {
+          radius: 8,
+          fillColor: color,
+          color: 'white',
+          weight: 2,
+          opacity: 1,
+          fillOpacity: 0.8,
+          className: `fire-marker ${confidenceClass}`
+        }).addTo(fireMap);
+
+        marker.bindPopup(`
+          <div class="fire-popup">
+            <h4>🔥 Incendio Detectado</h4>
+            <p><strong>📍 Área:</strong> ${fire.area}</p>
+            <p><strong>📅 Fecha:</strong> ${fire.date}</p>
+            <p><strong>🎯 Confianza:</strong> ${fire.confidence}%</p>
+            <p><strong>📍 Coordenadas:</strong> ${fire.lat.toFixed(4)}, ${fire.lng.toFixed(4)}</p>
+          </div>
+        `);
+
+        fireMarkers.push(marker);
+      });
+
+      // Actualizar estadísticas
+      updateFireStats(fireData.length, highConfidence, mediumConfidence, lowConfidence);
+    }
+
+    function updateFireStats(total, high, medium, low) {
+      document.getElementById('totalFires').textContent = total;
+      document.getElementById('highConfidenceFires').textContent = high;
+      document.getElementById('mediumConfidenceFires').textContent = medium;
+    }
+
+    function toggleFireLayer() {
+      const btn = document.getElementById('toggleFireBtn');
+      
+      if (fireLayerVisible) {
+        // Ocultar incendios
+        clearFireMarkers();
+        fireLayerVisible = false;
+        btn.textContent = '🔥 Mostrar Incendios';
+        btn.classList.remove('btn-danger');
+        btn.classList.add('btn');
+      } else {
+        // Mostrar incendios
+        loadFireData();
+        fireLayerVisible = true;
+        btn.textContent = '🔥 Ocultar Incendios';
+        btn.classList.remove('btn');
+        btn.classList.add('btn-danger');
+      }
+    }
+
+    function clearFireMarkers() {
+      fireMarkers.forEach(marker => {
+        fireMap.removeLayer(marker);
+      });
+      fireMarkers = [];
+      updateFireStats(0, 0, 0, 0);
+    }
+
+    function centerOnTucuman() {
+      if (fireMap) {
+        fireMap.setView([-26.8083, -65.2176], 10);
+      }
+    }
+
+    function addFireAtLocation(lat, lng) {
+      // Generar datos simulados para el nuevo incendio
+      const newFire = {
+        lat: lat,
+        lng: lng,
+        confidence: Math.floor(Math.random() * 50) + 30, // 30-80% de confianza
+        date: new Date().toISOString().split('T')[0],
+        area: 'Área Clicked'
+      };
+
+      // Agregar el nuevo incendio a los marcadores existentes
+      let color = '#ff8800'; // Confianza media por defecto
+      let confidenceClass = 'confidence-medium';
+      
+      if (newFire.confidence >= 80) {
+        color = '#ff4444';
+        confidenceClass = 'confidence-high';
+      } else if (newFire.confidence < 30) {
+        color = '#ffaa00';
+        confidenceClass = 'confidence-low';
+      }
+
+      const marker = L.circleMarker([newFire.lat, newFire.lng], {
+        radius: 10, // Ligeramente más grande para destacar
+        fillColor: color,
+        color: 'white',
+        weight: 3,
+        opacity: 1,
+        fillOpacity: 0.9,
+        className: `fire-marker ${confidenceClass}`
+      }).addTo(fireMap);
+
+      marker.bindPopup(`
+        <div class="fire-popup">
+          <h4>🔥 Incendio Agregado Manualmente</h4>
+          <p><strong>📍 Área:</strong> ${newFire.area}</p>
+          <p><strong>📅 Fecha:</strong> ${newFire.date}</p>
+          <p><strong>🎯 Confianza:</strong> ${newFire.confidence}%</p>
+          <p><strong>📍 Coordenadas:</strong> ${newFire.lat.toFixed(4)}, ${newFire.lng.toFixed(4)}</p>
+        </div>
+      `);
+
+      fireMarkers.push(marker);
+      
+      // Actualizar estadísticas
+      const total = fireMarkers.length;
+      const high = fireMarkers.filter(m => m.options.className.includes('confidence-high')).length;
+      const medium = fireMarkers.filter(m => m.options.className.includes('confidence-medium')).length;
+      updateFireStats(total, high, medium, 0);
+
+      // Cerrar el popup de ubicación
+      fireMap.closePopup();
+      
+      alert(`✅ Incendio agregado en coordenadas ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+    }
+
+    // Funciones del Mapa 3D
+    function initializeMap3D() {
+      // Verificar que el contenedor existe
+      if (!document.getElementById('map3d')) {
+        console.error('Contenedor map3d no encontrado');
+        return;
+      }
+
+      // Limpiar mapa existente si hay uno
+      if (map3d) {
+        map3d.remove();
+      }
+
+      // Obtener coordenadas de la URL si existen
+      const urlParams = new URLSearchParams(window.location.search);
+      const lat = urlParams.get('lat');
+      const lng = urlParams.get('lng');
+      
+      // Crear el mapa 3D
+      map3d = L.map('map3d', {
+        center: [lat ? parseFloat(lat) : -26.8083, lng ? parseFloat(lng) : -65.2176],
+        zoom: 12,
+        zoomControl: true
+      });
+
+      // Capa base por defecto - OpenStreetMap
+      const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap'
+      });
+      
+      osmLayer.addTo(map3d);
+
+      // Activar vista 3D automáticamente al inicializar
+      map3dLayerVisible = true;
+      document.getElementById('toggle3DBtn').textContent = '🎮 Desactivar Vista 3D';
+      document.getElementById('toggle3DBtn').classList.remove('btn');
+      document.getElementById('toggle3DBtn').classList.add('btn-danger');
+
+      console.log('Mapa 3D inicializado correctamente');
+
+      // Event listeners del mapa 3D
+      document.getElementById('map3dLayerSelect').addEventListener('change', function(event) {
+        const selectedLayer = event.target.value;
+        map3d.eachLayer(layer => {
+          if (layer instanceof L.TileLayer) {
+            map3d.removeLayer(layer);
+          }
+        });
+        
+        switch(selectedLayer) {
+          case 'osm':
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+              maxZoom: 19,
+              attribution: '© OpenStreetMap'
+            }).addTo(map3d);
+            break;
+          case 'satellite':
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+              maxZoom: 19,
+              attribution: '© Esri'
+            }).addTo(map3d);
+            break;
+          case 'terrain':
+            L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+              maxZoom: 17,
+              attribution: '© OpenTopoMap'
+            }).addTo(map3d);
+            break;
+          case 'none':
+            // No agregar capa base
+            break;
+        }
+      });
+
+      // Event listeners para controles 3D
+      document.getElementById('elevationMultiplier').addEventListener('input', function(event) {
+        elevationMultiplier = parseFloat(event.target.value);
+        document.getElementById('elevationValue').textContent = elevationMultiplier.toFixed(1) + 'x';
+        update3DMarkers();
+      });
+
+      document.getElementById('opacity3D').addEventListener('input', function(event) {
+        opacity3D = parseFloat(event.target.value);
+        document.getElementById('opacityValue').textContent = Math.round(opacity3D * 100) + '%';
+        update3DMarkers();
+      });
+
+      // Cargar parcelas 3D automáticamente al inicializar
+      load3DParcels();
+    }
+
+    function load3DParcels() {
+      console.log('Cargando parcelas 3D...');
+      
+      // Simular datos de parcelas 3D basados en las propiedades existentes
+      const parcelData = properties.map(property => ({
+        lat: property.latitud || -26.8083 + (Math.random() - 0.5) * 0.1,
+        lng: property.longitud || -65.2176 + (Math.random() - 0.5) * 0.1,
+        superficie: property.superficie || Math.random() * 1000 + 100,
+        categoria: property.categoria || 'URBANO C.S.M.P.',
+        padron: property.padronProvincial || 'N/A',
+        propietario: property.propietarioLegal || 'N/A'
+      }));
+
+      // Agregar algunas parcelas simuladas adicionales
+      for (let i = 0; i < 20; i++) {
+        parcelData.push({
+          lat: -26.8083 + (Math.random() - 0.5) * 0.2,
+          lng: -65.2176 + (Math.random() - 0.5) * 0.2,
+          superficie: Math.random() * 2000 + 50,
+          categoria: ['URBANO C.S.M.P.', 'RURAL', 'URBANO', 'RURAL C.S.M.P.'][Math.floor(Math.random() * 4)],
+          padron: `SIM-${Math.floor(Math.random() * 10000)}`,
+          propietario: `Propietario Simulado ${i + 1}`
+        });
+      }
+
+      // Siempre agregar marcadores si el mapa está inicializado
+      if (map3d && map3dLayerVisible) {
+        console.log('Agregando marcadores 3D de parcelas...');
+        add3DMarkers(parcelData);
+      } else {
+        console.log('Mapa 3D no inicializado o capa no visible:', { map3d: !!map3d, map3dLayerVisible });
+      }
+    }
+
+    function add3DMarkers(parcelData) {
+      console.log('Agregando marcadores 3D:', parcelData.length);
+      
+      // Verificar que el mapa está inicializado
+      if (!map3d) {
+        console.error('Mapa 3D no inicializado');
+        return;
+      }
+
+      // Limpiar marcadores existentes
+      clear3DMarkers();
+      
+      let totalHeight = 0;
+      let maxHeight = 0;
+      let urbanCount = 0;
+      let ruralCount = 0;
+      let commercialCount = 0;
+
+      parcelData.forEach(parcel => {
+        // Calcular altura basada en superficie
+        const baseHeight = Math.sqrt(parcel.superficie) * 0.1; // Factor base
+        const height = baseHeight * elevationMultiplier;
+        
+        totalHeight += height;
+        maxHeight = Math.max(maxHeight, height);
+
+        // Determinar color basado en categoría
+        let color = '#28a745'; // Verde por defecto (urbano)
+        if (parcel.categoria.includes('RURAL')) {
+          color = '#ffc107'; // Amarillo para rural
+          ruralCount++;
+        } else if (parcel.categoria.includes('COMERCIAL')) {
+          color = '#dc3545'; // Rojo para comercial
+          commercialCount++;
+        } else {
+          urbanCount++;
+        }
+
+        // Crear marcador 3D como rectángulo con altura
+        const marker = L.rectangle([
+          [parcel.lat - 0.0001, parcel.lng - 0.0001],
+          [parcel.lat + 0.0001, parcel.lng + 0.0001]
+        ], {
+          color: color,
+          fillColor: color,
+          fillOpacity: opacity3D,
+          weight: 2,
+          className: 'parcel-3d-marker'
+        }).addTo(map3d);
+
+        // Agregar efecto 3D con sombra
+        marker.setStyle({
+          'box-shadow': `0 ${height * 2}px ${height * 4}px rgba(0,0,0,0.3)`,
+          'transform': `translateY(-${height}px)`,
+          'border-radius': '3px'
+        });
+
+        marker.bindPopup(`
+          <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; min-width: 200px;">
+            <h4 style="margin: 0 0 10px 0; color: #667eea;">🏗️ Parcela 3D</h4>
+            <p style="margin: 5px 0;"><strong>📋 Padrón:</strong> ${parcel.padron}</p>
+            <p style="margin: 5px 0;"><strong>🏷️ Categoría:</strong> ${parcel.categoria}</p>
+            <p style="margin: 5px 0;"><strong>👑 Propietario:</strong> ${parcel.propietario}</p>
+            <p style="margin: 5px 0;"><strong>📏 Superficie:</strong> ${parcel.superficie.toFixed(2)} m²</p>
+            <p style="margin: 5px 0;"><strong>📐 Altura 3D:</strong> ${height.toFixed(2)}m</p>
+            <p style="margin: 5px 0;"><strong>📍 Coordenadas:</strong> ${parcel.lat.toFixed(4)}, ${parcel.lng.toFixed(4)}</p>
+          </div>
+        `);
+
+        map3dMarkers.push(marker);
+      });
+
+      // Actualizar estadísticas
+      update3DStats(parcelData.length, totalHeight / parcelData.length, maxHeight, urbanCount, ruralCount, commercialCount);
+    }
+
+    function update3DStats(total, avgHeight, maxHeight, urban, rural, commercial) {
+      document.getElementById('total3DParcels').textContent = total;
+      document.getElementById('avgHeight').textContent = avgHeight.toFixed(1) + 'm';
+      document.getElementById('maxHeight').textContent = maxHeight.toFixed(1) + 'm';
+    }
+
+    function update3DMarkers() {
+      if (map3dMarkers.length > 0) {
+        map3dMarkers.forEach(marker => {
+          // Actualizar opacidad
+          marker.setStyle({
+            fillOpacity: opacity3D
+          });
+        });
+      }
+    }
+
+    function toggle3DView() {
+      const btn = document.getElementById('toggle3DBtn');
+      
+      if (map3dLayerVisible) {
+        // Ocultar marcadores 3D
+        clear3DMarkers();
+        map3dLayerVisible = false;
+        btn.textContent = '🎮 Activar Vista 3D';
+        btn.classList.remove('btn-danger');
+        btn.classList.add('btn');
+      } else {
+        // Mostrar marcadores 3D
+        load3DParcels();
+        map3dLayerVisible = true;
+        btn.textContent = '🎮 Desactivar Vista 3D';
+        btn.classList.remove('btn');
+        btn.classList.add('btn-danger');
+      }
+    }
+
+    function clear3DMarkers() {
+      map3dMarkers.forEach(marker => {
+        map3d.removeLayer(marker);
+      });
+      map3dMarkers = [];
+      update3DStats(0, 0, 0, 0, 0, 0);
+    }
+
+    function reset3DView() {
+      elevationMultiplier = 1.0;
+      opacity3D = 0.8;
+      document.getElementById('elevationMultiplier').value = 1.0;
+      document.getElementById('opacity3D').value = 0.8;
+      document.getElementById('elevationValue').textContent = '1.0x';
+      document.getElementById('opacityValue').textContent = '80%';
+      
+      if (map3dLayerVisible) {
+        load3DParcels();
+      }
+    }
+
+    function centerOnTucuman3D() {
+      if (map3d) {
+        map3d.setView([-26.8083, -65.2176], 12);
+      }
+    }
+
+    // Funciones del Mapa
+    function initializeMap() {
+      // Obtener coordenadas de la URL si existen
+      const urlParams = new URLSearchParams(window.location.search);
+      const lat = urlParams.get('lat');
+      const lng = urlParams.get('lng');
+      
+      map = L.map('map').setView([
+        lat ? parseFloat(lat) : -26.8083, 
+        lng ? parseFloat(lng) : -65.2176
+      ], 12);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap'
+      }).addTo(map);
+
+      
+      wmsLayer = L.tileLayer.wms('http://190.221.181.227/geoserver/dgct/wms', {
+        layers: 'dgct:parcelas',
+        format: 'image/png',
+        transparent: true,
+        attribution: 'Datos GIS - Servidor DGCT',
+        crs: L.CRS.EPSG4326
+      });
+      map.addLayer(wmsLayer);
+
+      // Agregar marcador si se abrió desde el dashboard
+      if (lat && lng) {
+        L.marker([parseFloat(lat), parseFloat(lng)]).addTo(map)
+          .bindPopup('🏠 Propiedad seleccionada desde el dashboard')
+          .openPopup();
+      }
+
+      // Event listeners del mapa
+      document.getElementById('layerSelect').addEventListener('change', function(event) {
+        var selectedLayer = event.target.value;
+        if (wmsLayer) {
+          map.removeLayer(wmsLayer);
+        }
+        if (selectedLayer !== 'none') {
+          
+          wmsLayer = L.tileLayer.wms('http://190.221.181.227/geoserver/dgct/wms', {
+            layers: selectedLayer,
+            format: 'image/png',
+            transparent: true,
+            attribution: 'Datos GIS - Servidor DGCT',
+            crs: L.CRS.EPSG4326
+          });
+          map.addLayer(wmsLayer);
+        }
+      });
+
+      document.getElementById('searchButton').addEventListener('click', function() {
+        var parcela = document.getElementById('searchInput').value;
+        fetch(`https://aplicaciones.catastrotucuman.gov.ar/frmInfoParcelageo.asp?txtpadron=${parcela}`)
+          .then(response => response.text())
+          .then(data => {
+            // Crear visualización mejorada con colores y formato
+            const formattedData = formatModalData(data);
+            document.getElementById('modalContent').innerHTML = formattedData;
+            document.getElementById('myModal').style.display = "block";
+          })
+          .catch(error => console.error('Error al obtener información:', error));
+      });
+
+      map.on('click', function(e) {
+        var lat = e.latlng.lat;
+        var lng = e.latlng.lng;
+        fetch(`https://corsproxy.io/?key=4bab8684&url=http://190.221.181.227/geoserver/dgct/wfs?service=WFS&version=1.1.0&request=GetFeature&typeName=dgct:propiedades&outputFormat=application/json&CQL_FILTER=CONTAINS(geom,POINT(${lng} ${lat}))`)
+          .then(response => response.json())
+          .then(data => {
+            if (data.features && data.features.length > 0) {
+              var propiedad = data.features[0].properties;
+              mostrarInformacion(propiedad);
+            } else {
+              alert('❌ No se encontró información para esta ubicación.');
+            }
+          })
+          .catch(error => console.error('Error al obtener información:', error));
+      });
+    }
+
+    function mostrarInformacion(propiedad) {
+      var tableBody = document.querySelector('#infoTable tbody');
+      tableBody.innerHTML = '';
+      
+      // Crear estructura organizada por secciones
+      const secciones = {
+        'DATOS GENERALES': [
+          'padron_provincial', 'padron_municipal', 'nomenclatura', 'categoria', 
+          'mat_ord', 'alta', 'caracter', 'domicilio'
+        ],
+        'DATOS FISCALES': [
+          'responsable_fiscal', 'domicilio_fiscal'
+        ],
+        'DATOS DOMINIALES': [
+          'inscripcion_dominial', 'propietario_legal'
+        ],
+        'DATOS CARTOGRAFICOS': [
+          'plano_nro', 'plano_ano', 'verificacion_nro', 'verificacion_ano',
+          'superficie_plano', 'mide_poligono', 'linda_con'
+        ]
+      };
+
+      // Mapeo de nombres de campos
+      const fieldNames = {
+        'padron_provincial': '🏛️ Padrón Provincial',
+        'padron_municipal': '🏢 Padrón Municipal',
+        'nomenclatura': '📝 Nomenclatura',
+        'categoria': '🏷️ Categoría',
+        'mat_ord': '📋 Mat/Ord',
+        'alta': '📅 Alta',
+        'caracter': '⚖️ Caracter',
+        'domicilio': '🏠 Domicilio',
+        'responsable_fiscal': '👤 Responsable Fiscal',
+        'domicilio_fiscal': '🏠 Domicilio Fiscal',
+        'inscripcion_dominial': '📜 Inscripción Dominial',
+        'propietario_legal': '👑 Propietario Legal',
+        'plano_nro': '📐 Plano Nro',
+        'plano_ano': '📅 Plano Año',
+        'verificacion_nro': '✅ Verificación Nro',
+        'verificacion_ano': '📅 Verificación Año',
+        'superficie_plano': '📏 Superficie Según Plano',
+        'mide_poligono': '📐 Mide en Polígono',
+        'linda_con': '🔗 Linda con'
+      };
+
+      Object.keys(secciones).forEach(seccion => {
+        // Crear fila de encabezado de sección
+        const seccionRow = document.createElement('tr');
+        seccionRow.innerHTML = `
+          <td colspan="2" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: bold; text-align: center; padding: 15px; font-size: 1.1em;">
+            ${seccion}
+          </td>
+        `;
+        tableBody.appendChild(seccionRow);
+
+        // Agregar campos de la sección
+        secciones[seccion].forEach(field => {
+          const value = propiedad[field] || propiedad[field.toUpperCase()] || '';
+          if (value) {
+            const fieldRow = document.createElement('tr');
+            fieldRow.innerHTML = `
+              <td style="background-color: #f8f9ff; font-weight: bold; color: #333; padding: 12px; border-right: 2px solid #667eea;">
+                ${fieldNames[field] || field.replace(/_/g, ' ').toUpperCase()}
+              </td>
+              <td style="padding: 12px; color: #555; background-color: #fafafa;">
+                ${value}
+              </td>
+            `;
+            tableBody.appendChild(fieldRow);
+          }
+        });
+
+        // Agregar separador entre secciones
+        const separatorRow = document.createElement('tr');
+        separatorRow.innerHTML = `
+          <td colspan="2" style="height: 10px; background-color: #e9ecef;"></td>
+        `;
+        tableBody.appendChild(separatorRow);
+      });
+
+      // Si hay campos que no están en las secciones definidas, mostrarlos al final
+      const camposMostrados = Object.values(secciones).flat();
+      const camposRestantes = Object.keys(propiedad).filter(key => 
+        !camposMostrados.includes(key) && !camposMostrados.includes(key.toLowerCase())
+      );
+
+      if (camposRestantes.length > 0) {
+        const seccionRow = document.createElement('tr');
+        seccionRow.innerHTML = `
+          <td colspan="2" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; font-weight: bold; text-align: center; padding: 15px; font-size: 1.1em;">
+            INFORMACIÓN ADICIONAL
+          </td>
+        `;
+        tableBody.appendChild(seccionRow);
+
+        camposRestantes.forEach(field => {
+          const value = propiedad[field];
+          if (value) {
+            const fieldRow = document.createElement('tr');
+            fieldRow.innerHTML = `
+              <td style="background-color: #f8f9ff; font-weight: bold; color: #333; padding: 12px; border-right: 2px solid #28a745;">
+                ${field.replace(/_/g, ' ').toUpperCase()}
+              </td>
+              <td style="padding: 12px; color: #555; background-color: #fafafa;">
+                ${value}
+              </td>
+            `;
+            tableBody.appendChild(fieldRow);
+          }
+        });
+      }
+    }
+
+    function highlightTable() {
+      let rows = document.querySelectorAll('#infoTable tbody tr');
+      rows.forEach(row => {
+        // Solo aplicar highlight a las filas de datos, no a los encabezados de sección
+        if (!row.querySelector('td[colspan="2"]')) {
+          row.style.backgroundColor = '#fff3cd';
+          row.style.borderLeft = '4px solid #ffc107';
+          row.style.transition = 'all 0.3s ease';
+        }
+      });
+      
+      // Remover highlight después de 3 segundos
+      setTimeout(() => {
+        rows.forEach(row => {
+          if (!row.querySelector('td[colspan="2"]')) {
+            row.style.backgroundColor = '';
+            row.style.borderLeft = '';
+          }
+        });
+      }, 3000);
+    }
+
+    function formatModalData(htmlData) {
+      // Intentar parsear el formato específico con & como delimitadores
+      if (htmlData.includes('&') && htmlData.includes('---')) {
+        const result = parseSpecialFormat(htmlData);
+        // Mostrar el botón si hay datos válidos
+        if (currentModalPropertyData && currentModalPropertyData.padronProvincial) {
+          setTimeout(() => {
+            document.getElementById('addPropertyBtn').style.display = 'inline-block';
+          }, 100);
+        }
+        return result;
+      }
+      
+      // Si no es el formato especial, intentar parsear HTML
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(htmlData, 'text/html');
+      const tables = doc.querySelectorAll('table');
+      
+      let formattedData = '';
+      
+      if (tables.length > 0) {
+        tables.forEach((table, tableIndex) => {
+          const rows = table.querySelectorAll('tr');
+          let sectionData = '';
+          let currentSection = '';
+          
+          rows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length >= 2) {
+              const label = cells[0].textContent.trim();
+              const value = cells[1].textContent.trim();
+              
+              // Detectar secciones por el contenido
+              if (label.includes('DATOS GENERALES') || label.includes('DATOS FISCALES') || 
+                  label.includes('DATOS DOMINIALES') || label.includes('DATOS CARTOGRAFICOS')) {
+                if (currentSection) {
+                  sectionData += '</pre>\n';
+                }
+                currentSection = label;
+                sectionData += `\n<span style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 10px 15px; display: block; margin: 10px 0; border-radius: 5px; font-weight: bold; text-align: center;">${currentSection}</span>\n<pre style="background: #f8f9fa; padding: 15px; border-radius: 5px; border-left: 4px solid #667eea; margin: 10px 0; font-family: 'Courier New', monospace; white-space: pre-wrap; word-wrap: break-word;">`;
+              } else if (label && value && !label.includes('DATOS')) {
+                // Formatear campos individuales
+                sectionData += `<span style="color: #667eea; font-weight: bold;">${label}:</span> <span style="color: #333;">${value}</span>\n`;
+              }
+            }
+          });
+          
+          if (currentSection) {
+            sectionData += '</pre>';
+          }
+          
+          if (sectionData.trim()) {
+            formattedData += sectionData;
+          }
+        });
+      }
+      
+      // Si no se encontraron tablas o no hay datos parseados, usar el contenido original
+      if (!formattedData.trim()) {
+        formattedData = `
+          <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; border-left: 4px solid #667eea;">
+            <h3 style="color: #667eea; margin-bottom: 15px;">📋 Información de la Propiedad</h3>
+            <pre style="font-family: 'Courier New', monospace; white-space: pre-wrap; word-wrap: break-word; color: #333;">${htmlData}</pre>
+          </div>
+        `;
+      }
+      
+      return formattedData;
+    }
+
+    function parseSpecialFormat(data) {
+      // Dividir por & y limpiar
+      const parts = data.split('&').map(part => part.trim()).filter(part => part.length > 0);
+      
+      let formattedData = '';
+      let currentSection = '';
+      let sectionData = '';
+      
+      // Extraer datos de la propiedad para el botón "Agregar"
+      currentModalPropertyData = {};
+      
+      // Mapeo de campos con emojis
+      const fieldEmojis = {
+        'Padron Provincial': '🏛️',
+        'Padron Municipal': '🏢',
+        'Nomenclatura': '📝',
+        'Categoria': '🏷️',
+        'Mat/Ord': '📋',
+        'Alta': '📅',
+        'Caracter': '⚖️',
+        'Domicilio': '🏠',
+        'Responsable Fiscal': '👤',
+        'Domicilio Fiscal': '🏠',
+        'Inscripcion Dominial': '📜',
+        'Propietario Legal': '👑',
+        'Plano Nro': '📐',
+        'Plano Ano': '📅',
+        'Verificacion Nro': '✅',
+        'Verificacion Ano': '📅',
+        'Superficie Segun Plano': '📏',
+        'Mide en Poligono': '📐',
+        'Linda con': '🔗'
+      };
+      
+      parts.forEach(part => {
+        // Detectar si es una línea separadora
+        if (part.includes('---')) {
+          // Si hay datos en la sección actual, cerrarla
+          if (currentSection && sectionData.trim()) {
+            formattedData += `</pre>\n`;
+            sectionData = '';
+          }
+          return;
+        }
+        
+        // Detectar secciones principales
+        if (part.includes('DATOS GENERALES')) {
+          currentSection = '📋 DATOS GENERALES';
+          formattedData += `\n<span style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 10px 15px; display: block; margin: 10px 0; border-radius: 5px; font-weight: bold; text-align: center;">${currentSection}</span>\n<pre style="background: #f8f9fa; padding: 15px; border-radius: 5px; border-left: 4px solid #667eea; margin: 10px 0; font-family: 'Courier New', monospace; white-space: pre-wrap; word-wrap: break-word;">`;
+        } else if (part.includes('DATOS FISCALES')) {
+          currentSection = '💰 DATOS FISCALES';
+          formattedData += `\n<span style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 10px 15px; display: block; margin: 10px 0; border-radius: 5px; font-weight: bold; text-align: center;">${currentSection}</span>\n<pre style="background: #f8f9fa; padding: 15px; border-radius: 5px; border-left: 4px solid #28a745; margin: 10px 0; font-family: 'Courier New', monospace; white-space: pre-wrap; word-wrap: break-word;">`;
+        } else if (part.includes('DATOS DOMINIALES')) {
+          currentSection = '👑 DATOS DOMINIALES';
+          formattedData += `\n<span style="background: linear-gradient(135deg, #fd7e14 0%, #ffc107 100%); color: white; padding: 10px 15px; display: block; margin: 10px 0; border-radius: 5px; font-weight: bold; text-align: center;">${currentSection}</span>\n<pre style="background: #f8f9fa; padding: 15px; border-radius: 5px; border-left: 4px solid #fd7e14; margin: 10px 0; font-family: 'Courier New', monospace; white-space: pre-wrap; word-wrap: break-word;">`;
+        } else if (part.includes('DATOS CARTOGRAFICOS')) {
+          currentSection = '🗺️ DATOS CARTOGRAFICOS';
+          formattedData += `\n<span style="background: linear-gradient(135deg, #6f42c1 0%, #e83e8c 100%); color: white; padding: 10px 15px; display: block; margin: 10px 0; border-radius: 5px; font-weight: bold; text-align: center;">${currentSection}</span>\n<pre style="background: #f8f9fa; padding: 15px; border-radius: 5px; border-left: 4px solid #6f42c1; margin: 10px 0; font-family: 'Courier New', monospace; white-space: pre-wrap; word-wrap: break-word;">`;
+        } else if (part.includes('Información de la Propiedad')) {
+          // Saltar el título principal
+          return;
+        } else if (part.includes(':')) {
+          // Es un campo de datos
+          const colonIndex = part.indexOf(':');
+          const field = part.substring(0, colonIndex).trim();
+          const value = part.substring(colonIndex + 1).trim();
+          
+          // Extraer datos para el botón "Agregar"
+          if (field.toLowerCase().includes('padron provincial')) {
+            currentModalPropertyData.padronProvincial = value;
+          } else if (field.toLowerCase().includes('padron municipal')) {
+            currentModalPropertyData.padronMunicipal = value;
+          } else if (field.toLowerCase().includes('nomenclatura')) {
+            currentModalPropertyData.nomenclatura = value;
+          } else if (field.toLowerCase().includes('categoria')) {
+            currentModalPropertyData.categoria = value;
+          } else if (field.toLowerCase().includes('mat/ord')) {
+            currentModalPropertyData.matOrd = value;
+          } else if (field.toLowerCase().includes('alta')) {
+            currentModalPropertyData.alta = value;
+          } else if (field.toLowerCase().includes('caracter')) {
+            currentModalPropertyData.caracter = value;
+          } else if (field.toLowerCase().includes('domicilio') && !field.toLowerCase().includes('fiscal')) {
+            currentModalPropertyData.domicilio = value;
+          } else if (field.toLowerCase().includes('responsable fiscal')) {
+            currentModalPropertyData.responsableFiscal = value;
+          } else if (field.toLowerCase().includes('domicilio fiscal')) {
+            currentModalPropertyData.domicilioFiscal = value;
+          } else if (field.toLowerCase().includes('inscripcion dominial')) {
+            currentModalPropertyData.inscripcionDominial = value;
+          } else if (field.toLowerCase().includes('propietario legal')) {
+            currentModalPropertyData.propietarioLegal = value;
+          } else if (field.toLowerCase().includes('plano nro')) {
+            currentModalPropertyData.planoNro = value;
+          } else if (field.toLowerCase().includes('plano ano')) {
+            currentModalPropertyData.planoAno = value;
+          } else if (field.toLowerCase().includes('superficie')) {
+            currentModalPropertyData.superficie = parseFloat(value.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+          } else if (field.toLowerCase().includes('linda con')) {
+            currentModalPropertyData.lindaCon = value;
+          }
+          
+          // Buscar emoji para el campo
+          let emoji = '';
+          for (const [key, emojiValue] of Object.entries(fieldEmojis)) {
+            if (field.toLowerCase().includes(key.toLowerCase())) {
+              emoji = emojiValue;
+              break;
+            }
+          }
+          
+          // Si es un propietario legal numerado (1), 2), etc.)
+          if (field.match(/^\s*\d+\)/)) {
+            formattedData += `<span style="color: #6f42c1; font-weight: bold;">${field}:</span> <span style="color: #333;">${value}</span>\n`;
+          } else {
+            formattedData += `<span style="color: #667eea; font-weight: bold;">${emoji} ${field}:</span> <span style="color: #333;">${value}</span>\n`;
+          }
+        }
+      });
+      
+      // Cerrar la última sección si hay datos
+      if (currentSection && sectionData.trim()) {
+        formattedData += `</pre>\n`;
+      }
+      
+      return formattedData || `
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; border-left: 4px solid #667eea;">
+          <h3 style="color: #667eea; margin-bottom: 15px;">📋 Información de la Propiedad</h3>
+          <pre style="font-family: 'Courier New', monospace; white-space: pre-wrap; word-wrap: break-word; color: #333;">${data}</pre>
+        </div>
+      `;
+    }
+
+    // Event listeners globales
+    document.addEventListener('DOMContentLoaded', function() {
+      // Inicializar dashboard
+      updateStats();
+      renderProperties();
+      
+      // Inicializar el mapa con un pequeño delay para asegurar que el DOM esté listo
+      setTimeout(() => {
+        initializeMap();
+      }, 100);
+
+      // Manejar el envío del formulario de propiedades
+      document.getElementById('propertyForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const propertyData = {};
+        
+        for (let [key, value] of formData.entries()) {
+          propertyData[key] = value;
+        }
+
+        if (currentEditingId) {
+          // Editar propiedad existente
+          const index = properties.findIndex(p => p.id === currentEditingId);
+          if (index !== -1) {
+            properties[index] = { ...properties[index], ...propertyData };
+          }
+        } else {
+          // Crear nueva propiedad
+          propertyData.id = Date.now(); // ID único simple
+          properties.push(propertyData);
+        }
+
+        saveProperties();
+        renderProperties();
+        closeModal();
+      });
+
+      // Cerrar modales
+      document.querySelectorAll('.close').forEach(closeBtn => {
+        closeBtn.onclick = function() {
+          document.getElementById('myModal').style.display = "none";
+          document.getElementById('propertyModal').style.display = "none";
+          // Limpiar datos del modal de mapa
+          document.getElementById('addPropertyBtn').style.display = 'none';
+          currentModalPropertyData = null;
+        }
+      });
+
+      window.onclick = function(event) {
+        const mapModal = document.getElementById('myModal');
+        const propertyModal = document.getElementById('propertyModal');
+        if (event.target === mapModal) {
+          closeMapModal();
+        }
+        if (event.target === propertyModal) {
+          propertyModal.style.display = "none";
+        }
+      }
+    });
+  </script>
+</body>
+</html
